@@ -1,0 +1,6 @@
+{
+  "sourceAccount" : 1,
+  "targetAccount": 2,
+  "amount": 50.0,
+  "currency" : "USD"
+}
