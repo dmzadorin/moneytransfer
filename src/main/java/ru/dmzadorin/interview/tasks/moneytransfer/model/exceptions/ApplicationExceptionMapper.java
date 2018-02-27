@@ -9,9 +9,9 @@ import javax.ws.rs.ext.ExceptionMapper;
 /**
  * Created by Dmitry Zadorin on 17.02.2018
  */
-public class BaseExceptionMapper implements ExceptionMapper<BaseException> {
+public class ApplicationExceptionMapper implements ExceptionMapper<ApplicationException> {
     @Override
-    public Response toResponse(BaseException exception) {
+    public Response toResponse(ApplicationException exception) {
         return Response
                 .status(exception.responseStatus())
                 .entity(new ErrorMessage(exception.getMessage()))

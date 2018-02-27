@@ -12,5 +12,7 @@ import java.math.BigDecimal;
 public interface AccountDao {
     Long saveAccount(String fullName, BigDecimal amount, Currency currency);
 
+    void updateAmount(long id, BigDecimal amount);
+
     Account getAccountById(long accountId) throws AccountNotFoundException;
 }

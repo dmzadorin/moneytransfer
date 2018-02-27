@@ -5,6 +5,7 @@ import ru.dmzadorin.interview.tasks.moneytransfer.model.Currency;
 import ru.dmzadorin.interview.tasks.moneytransfer.model.Transfer;
 
 import java.math.BigDecimal;
+import java.util.Collection;
 
 /**
  * Created by Dmitry Zadorin on 18.02.2018.
@@ -15,4 +16,6 @@ public interface MoneyTransferService {
     Account getAccountById(long accountId);
 
     Transfer withdrawAmount(long sourceId, long recipientId, BigDecimal amount, Currency currency);
+
+    Collection<Transfer> getAllTransfers();
 }

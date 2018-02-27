@@ -22,7 +22,7 @@ public class H2AccountDao implements AccountDao {
     private static final String INSERT_ACCOUNT =
             "insert into ACCOUNT (FULLNAME, AMOUNT, CURRENCY, CREATE_TIME) values (?,?,?, CURRENT_TIMESTAMP())";
     private static final String FIND_ACCOUNT_BY_ID = "select * from ACCOUNT where ID = ?";
-    private static final String GET_ACCOUNT_CREATION_TIME = "select CREATE_TIME from ACCOUNT where ID = ?";
+    private static final String UPDATE_ACCOUNT = "update account set amount = ? where id = ?";
     private final DataSource datasource;
 
     @Inject
@@ -48,6 +48,16 @@ public class H2AccountDao implements AccountDao {
     }
 
     @Override
+    public void updateAmount(long id, BigDecimal amount) {
+        DaoUtils.executeQueryWithTransaction(datasource, UPDATE_ACCOUNT, statement -> {
+            statement.setBigDecimal(1, amount);
+            statement.setLong(2, id);
+            statement.executeUpdate();
+            return null;
+        });
+    }
+
+    @Override
     public Account getAccountById(long accountId) throws AccountNotFoundException {
         return DaoUtils.executeQuery(datasource, FIND_ACCOUNT_BY_ID, statement -> {
             statement.setLong(1, accountId);
@@ -57,8 +67,8 @@ public class H2AccountDao implements AccountDao {
                     Timestamp timestamp = rs.getTimestamp("CREATE_TIME");
                     LocalDateTime createTime = LocalDateTime.ofInstant(timestamp.toInstant(), ZoneId.systemDefault());
                     BigDecimal amount = rs.getBigDecimal("AMOUNT");
-                    String fullname = rs.getString("FULLNAME");
-                    return new Account(accountId, fullname, amount, currency, createTime);
+                    String fullName = rs.getString("FULLNAME");
+                    return new Account(accountId, fullName, amount, currency, createTime);
                 } else {
                     return null;
                 }

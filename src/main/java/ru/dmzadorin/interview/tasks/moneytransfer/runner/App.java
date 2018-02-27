@@ -19,7 +19,7 @@ public class App {
     public static void main(String[] args) {
         int port;
         if (args == null || args.length != 1) {
-            System.out.println("Using default port value: 9998");
+            logger.info("Using default port value: 9998");
             port = DEFAULT_PORT_VALUE;
         } else {
             port = parseInt(args[0]);
@@ -31,12 +31,15 @@ public class App {
         MoneyTransferApplication config = new MoneyTransferApplication();
         HttpServer server = GrizzlyHttpServerFactory.createHttpServer(baseUri, config);
         try {
+            logger.info("Starting http server on endpoint: {}", baseUri.toString());
             server.start();
             logger.info("Press any key to stop the server...");
             System.in.read();
-            server.shutdown();
+            logger.info("Stopping http server on endpoint: {}", baseUri.toString());
         } catch (Exception e) {
             logger.error(e);
+        } finally {
+            server.shutdown();
         }
     }
 
@@ -44,7 +47,7 @@ public class App {
         try {
             return Integer.parseInt(value);
         } catch (NumberFormatException e) {
-            System.out.println("Incorrect port value, should be integer = " + value);
+            logger.info("Incorrect port value, should be integer = " + value);
         }
         return -1;
     }

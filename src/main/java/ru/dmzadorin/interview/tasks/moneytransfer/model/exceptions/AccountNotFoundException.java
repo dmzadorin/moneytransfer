@@ -3,7 +3,7 @@ package ru.dmzadorin.interview.tasks.moneytransfer.model.exceptions;
 /**
  * Created by Dmitry Zadorin on 17.02.2018
  */
-public class AccountNotFoundException extends BaseException {
+public class AccountNotFoundException extends ApplicationException {
     private AccountNotFoundException(String message) {
         super(message);
     }

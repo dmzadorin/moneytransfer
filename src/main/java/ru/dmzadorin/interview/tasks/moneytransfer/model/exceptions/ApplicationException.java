@@ -5,12 +5,12 @@ import javax.ws.rs.core.Response;
 /**
  * Created by Dmitry Zadorin on 26.04.2016.
  */
-public abstract class BaseException extends RuntimeException {
-    public BaseException(String message) {
+public abstract class ApplicationException extends RuntimeException {
+    public ApplicationException(String message) {
         super(message);
     }
 
-    public BaseException(String message, Throwable cause) {
+    public ApplicationException(String message, Throwable cause) {
         super(message, cause);
     }
 

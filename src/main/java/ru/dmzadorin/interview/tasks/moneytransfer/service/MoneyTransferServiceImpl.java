@@ -15,6 +15,7 @@ import ru.dmzadorin.interview.tasks.moneytransfer.persistence.TransferDao;
 
 import javax.inject.Inject;
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -33,7 +34,7 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
     public MoneyTransferServiceImpl(AccountDao accountDao, TransferDao transferDao) {
         this.accountDao = accountDao;
         this.transferDao = transferDao;
-        accountLocks = CacheBuilder.newBuilder().weakValues().build();
+        this.accountLocks = CacheBuilder.newBuilder().weakValues().build();
     }
 
     @Override
@@ -76,6 +77,11 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
             second.writeLock().unlock();
             first.writeLock().unlock();
         }
+    }
+
+    @Override
+    public Collection<Transfer> getAllTransfers() {
+        return transferDao.getTransfers();
     }
 
     private Transfer doCreateTransfer(long sourceId, long recipientId, BigDecimal amount, Currency currency) {

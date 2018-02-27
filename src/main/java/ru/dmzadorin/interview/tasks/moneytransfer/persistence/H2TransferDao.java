@@ -18,12 +18,15 @@ import java.util.List;
 public class H2TransferDao implements TransferDao {
     private static final String CREATE_TRANSFER =
             "insert into transfer (SOURCE_ID, RECIPIENT_ID, AMOUNT, CURRENCY, CREATE_TIME) values (?,?,?,?, CURRENT_TIMESTAMP())";
-    private static final String GET_ALL_TRANSFERS = "select * from transfers";
+    private static final String UPDATE_ACCOUNT = "update account set amount = ? where id = ?";
+    private static final String GET_ALL_TRANSFERS = "select * from transfer";
     private final DataSource datasource;
+    private final AccountDao accountDao;
 
     @Inject
-    public H2TransferDao(DataSource datasource) {
+    public H2TransferDao(DataSource datasource, AccountDao accountDao) {
         this.datasource = datasource;
+        this.accountDao = accountDao;
     }
 
     @Override
@@ -39,6 +42,8 @@ public class H2TransferDao implements TransferDao {
                 if (rs.next()) {
                     long id = rs.getLong(1);
                     source.executeWithdraw(recipient, amount);
+                    accountDao.updateAmount(source.getId(), source.getAmount());
+                    accountDao.updateAmount(recipient.getId(), recipient.getAmount());
                     transfer = new Transfer(id, source.getId(), recipient.getId(), amount, source.getCurrency());
                 }
             }
