@@ -34,22 +34,4 @@ class H2AccountDaoTest extends Specification {
         'test2'  | BigDecimal.valueOf(10.0)  | Currency.USD
         'test3'  | BigDecimal.valueOf(20.0)  | Currency.GBP
     }
-
-    @Unroll
-    def "verify that amount for account '#fullName' is updated properly"() {
-        given:
-        def id = accountDao.saveAccount(fullName, amount, currency)
-        when:
-        accountDao.updateAmount(id, updatedAmount)
-        then:
-        noExceptionThrown()
-        def account = accountDao.getAccountById(id)
-        account != null
-        account.fullName == fullName
-        account.currency == currency
-        account.amount == updatedAmount
-        where:
-        fullName     | amount                    | currency     | updatedAmount
-        'amountTest' | BigDecimal.valueOf(100.0) | Currency.EUR | BigDecimal.valueOf(50.0)
-    }
 }

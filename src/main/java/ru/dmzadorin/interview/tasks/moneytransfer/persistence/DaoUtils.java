@@ -16,13 +16,14 @@ import java.sql.Statement;
 public class DaoUtils {
     private static final Logger logger = LogManager.getLogger();
 
-    public static <T> T executeQueryWithTransaction(DataSource datasource, String query, QueryProcessor<T> queryProcessor)
+    public static <T> T executeQueryWithTransaction(DataSource datasource, ConnectionProcessor<T> connectionProcessor)
             throws DaoException {
         try (Connection conn = datasource.getConnection()) {
             conn.setAutoCommit(false);
             T result;
-            try (PreparedStatement statement = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
-                result = queryProcessor.doInPreparedStatement(statement);
+
+            try {
+                result = connectionProcessor.doInConnection(conn);
                 conn.commit();
             } catch (SQLException e) {
                 logger.error("Failed to execute sql action due to error", e);

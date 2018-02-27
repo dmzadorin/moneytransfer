@@ -9,7 +9,9 @@ import ru.dmzadorin.interview.tasks.moneytransfer.model.exceptions.AccountNotFou
 import javax.inject.Inject;
 import javax.sql.DataSource;
 import java.math.BigDecimal;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -22,7 +24,6 @@ public class H2AccountDao implements AccountDao {
     private static final String INSERT_ACCOUNT =
             "insert into ACCOUNT (FULLNAME, AMOUNT, CURRENCY, CREATE_TIME) values (?,?,?, CURRENT_TIMESTAMP())";
     private static final String FIND_ACCOUNT_BY_ID = "select * from ACCOUNT where ID = ?";
-    private static final String UPDATE_ACCOUNT = "update account set amount = ? where id = ?";
     private final DataSource datasource;
 
     @Inject
@@ -32,28 +33,20 @@ public class H2AccountDao implements AccountDao {
 
     @Override
     public Long saveAccount(String fullName, BigDecimal amount, Currency currency) {
-        return DaoUtils.executeQueryWithTransaction(datasource, INSERT_ACCOUNT, statement -> {
-            statement.setString(1, fullName);
-            statement.setBigDecimal(2, amount);
-            statement.setString(3, currency.name());
-            statement.executeUpdate();
-            try (ResultSet rs = statement.getGeneratedKeys()) {
-                if (rs.next()) {
-                    return rs.getLong(1);
-                } else {
-                    return null;
+        return DaoUtils.executeQueryWithTransaction(datasource, connection -> {
+            try (PreparedStatement statement = connection.prepareStatement(INSERT_ACCOUNT, Statement.RETURN_GENERATED_KEYS)) {
+                statement.setString(1, fullName);
+                statement.setBigDecimal(2, amount);
+                statement.setString(3, currency.name());
+                statement.executeUpdate();
+                try (ResultSet rs = statement.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        return rs.getLong(1);
+                    } else {
+                        return null;
+                    }
                 }
             }
-        });
-    }
-
-    @Override
-    public void updateAmount(long id, BigDecimal amount) {
-        DaoUtils.executeQueryWithTransaction(datasource, UPDATE_ACCOUNT, statement -> {
-            statement.setBigDecimal(1, amount);
-            statement.setLong(2, id);
-            statement.executeUpdate();
-            return null;
         });
     }
 

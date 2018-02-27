@@ -12,7 +12,7 @@ public class Account {
     private final String fullName;
     private final Currency currency;
     private final LocalDateTime createTime;
-    private BigDecimal amount;
+    private final BigDecimal amount;
 
     public Account(long id, String fullName, BigDecimal amount, Currency currency, LocalDateTime createTime) {
         this.id = id;
@@ -42,8 +42,11 @@ public class Account {
         return createTime;
     }
 
-    public void executeWithdraw(Account another, BigDecimal withdrawAmount) {
-        amount = amount.subtract(withdrawAmount);
-        another.amount = another.amount.add(withdrawAmount);
+    public Account subtractAmount(BigDecimal withdrawAmount){
+        return new Account(id, fullName, amount.subtract(withdrawAmount), currency, createTime);
+    }
+
+    public Account addAmount(BigDecimal withdrawAmount){
+        return new Account(id, fullName, amount.add(withdrawAmount), currency, createTime);
     }
 }

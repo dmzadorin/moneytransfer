@@ -1,13 +1,16 @@
 package ru.dmzadorin.interview.tasks.moneytransfer.persistence;
 
-import ru.dmzadorin.interview.tasks.moneytransfer.model.Account;
 import ru.dmzadorin.interview.tasks.moneytransfer.model.Currency;
 import ru.dmzadorin.interview.tasks.moneytransfer.model.Transfer;
 
 import javax.inject.Inject;
 import javax.sql.DataSource;
 import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -18,33 +21,36 @@ import java.util.List;
 public class H2TransferDao implements TransferDao {
     private static final String CREATE_TRANSFER =
             "insert into transfer (SOURCE_ID, RECIPIENT_ID, AMOUNT, CURRENCY, CREATE_TIME) values (?,?,?,?, CURRENT_TIMESTAMP())";
-    private static final String UPDATE_ACCOUNT = "update account set amount = ? where id = ?";
+    private static final String SUBTRACT_AMOUNT = "update account set amount = amount - ? where id = ?";
+    private static final String ADD_AMOUNT = "update account set amount = amount + ? where id = ?";
     private static final String GET_ALL_TRANSFERS = "select * from transfer";
     private final DataSource datasource;
-    private final AccountDao accountDao;
 
     @Inject
-    public H2TransferDao(DataSource datasource, AccountDao accountDao) {
+    public H2TransferDao(DataSource datasource) {
         this.datasource = datasource;
-        this.accountDao = accountDao;
     }
 
     @Override
-    public Transfer transferAmount(Account source, Account recipient, BigDecimal amount, Currency currency) {
-        return DaoUtils.executeQueryWithTransaction(datasource, CREATE_TRANSFER, statement -> {
-            statement.setLong(1, source.getId());
-            statement.setLong(2, recipient.getId());
-            statement.setBigDecimal(3, amount);
-            statement.setString(4, currency.name());
-            Transfer transfer = null;
-            statement.executeUpdate();
-            try (ResultSet rs = statement.getGeneratedKeys()) {
-                if (rs.next()) {
-                    long id = rs.getLong(1);
-                    source.executeWithdraw(recipient, amount);
-                    accountDao.updateAmount(source.getId(), source.getAmount());
-                    accountDao.updateAmount(recipient.getId(), recipient.getAmount());
-                    transfer = new Transfer(id, source.getId(), recipient.getId(), amount, source.getCurrency());
+    public Transfer transferAmount(long sourceId, long recipientId, BigDecimal amount, Currency currency) {
+        return DaoUtils.executeQueryWithTransaction(datasource, conn -> {
+            Transfer transfer;
+            try (PreparedStatement stmt = conn.prepareStatement(CREATE_TRANSFER, Statement.RETURN_GENERATED_KEYS)) {
+                stmt.setLong(1, sourceId);
+                stmt.setLong(2, recipientId);
+                stmt.setBigDecimal(3, amount);
+                stmt.setString(4, currency.name());
+                stmt.executeUpdate();
+
+                try (ResultSet rs = stmt.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        long id = rs.getLong(1);
+                        updateAccount(sourceId, amount, SUBTRACT_AMOUNT, conn);
+                        updateAccount(recipientId, amount, ADD_AMOUNT, conn);
+                        transfer = new Transfer(id, sourceId, recipientId, amount, currency);
+                    } else {
+                        throw new SQLException("No keys generated!");
+                    }
                 }
             }
             return transfer;
@@ -67,5 +73,13 @@ public class H2TransferDao implements TransferDao {
             }
             return transfers;
         });
+    }
+
+    private void updateAccount(long accountId, BigDecimal amount, String query, Connection conn) throws SQLException {
+        try (PreparedStatement statement = conn.prepareStatement(query)) {
+            statement.setBigDecimal(1, amount);
+            statement.setLong(2, accountId);
+            statement.executeUpdate();
+        }
     }
 }

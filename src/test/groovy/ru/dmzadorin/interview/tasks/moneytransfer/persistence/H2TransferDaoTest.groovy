@@ -22,7 +22,7 @@ class H2TransferDaoTest extends Specification {
         def ds = DataSourceConfigurer.initDataSource("jdbc:h2:mem:moneytransfer;DB_CLOSE_DELAY=-1", "sa", "",
                 "classpath:/database/schema.sql")
         accountDao = new H2AccountDao(ds)
-        transferDao = new H2TransferDao(ds, accountDao)
+        transferDao = new H2TransferDao(ds)
         def sourceId = accountDao.saveAccount('fullName', BigDecimal.valueOf(1000.0), Currency.USD)
         def recipientId = accountDao.saveAccount('fullName', BigDecimal.valueOf(500.0), Currency.USD)
         source = accountDao.getAccountById(sourceId)
@@ -36,8 +36,12 @@ class H2TransferDaoTest extends Specification {
         def transfer = transferDao.transferAmount(source, recipient, transferAmount, currency)
         then:
         transfer != null
-        source.amount == expectedSourceAmt
-        recipient.amount == expectedRecipientAmt
+//        source.amount == expectedSourceAmt
+//        recipient.amount == expectedRecipientAmt
+        def actualSource = accountDao.getAccountById(source.getId())
+        def actualRecipient = accountDao.getAccountById(recipient.getId())
+        actualSource.amount == expectedSourceAmt
+        actualRecipient.amount == expectedRecipientAmt
         where:
         transferAmount            | currency
         BigDecimal.valueOf(100.0) | Currency.USD

@@ -90,7 +90,7 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
         Account recipientAccount = requireNonNull(accountDao.getAccountById(recipientId),
                 "Recipient account " + recipientId + " not found");
         validate(sourceAccount, recipientAccount, currency);
-        Transfer transfer = transferDao.transferAmount(sourceAccount, recipientAccount, amount, currency);
+        Transfer transfer = transferDao.transferAmount(sourceAccount.getId(), recipientAccount.getId(), amount, currency);
         if (transfer == null) {
             //TODO
         }

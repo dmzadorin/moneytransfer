@@ -12,7 +12,7 @@ import java.util.Collection;
  */
 public interface TransferDao {
 
-    Transfer transferAmount(Account source, Account recipient, BigDecimal amount, Currency currency);
+    Transfer transferAmount(long sourceId, long recipientId, BigDecimal amount, Currency currency);
 
     Collection<Transfer> getTransfers();
 }
