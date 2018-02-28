@@ -8,14 +8,23 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Statement;
 
 /**
  * Created by Dmitry Zadorin on 18.02.2018.
+ * Utility classes for working with database
  */
 public class DaoUtils {
     private static final Logger logger = LogManager.getLogger();
 
+    /**
+     * Initiates connection, creates prepared statement and processes it with supplied queryProcessor
+     *
+     * @param datasource          datasource that will be used by connection
+     * @param connectionProcessor some action to do in connection
+     * @param <T>                 type of return value
+     * @return result of applying connection processor to connection
+     * @throws DaoException if a database access error occurs (this exception wraps SQLException)
+     */
     public static <T> T executeQueryWithTransaction(DataSource datasource, ConnectionProcessor<T> connectionProcessor)
             throws DaoException {
         try (Connection conn = datasource.getConnection()) {
@@ -39,6 +48,16 @@ public class DaoUtils {
         }
     }
 
+    /**
+     * Initiates connection, creates prepared statement and processes it with supplied queryProcessor
+     *
+     * @param datasource     datasource that will be used by connection
+     * @param query          query to execute
+     * @param queryProcessor some action to do with prepared statement
+     * @param <T>            type of return value
+     * @return result of processing prepared statement
+     * @throws DaoException if a database access error occurs (this exception wraps SQLException)
+     */
     public static <T> T executeQuery(DataSource datasource, String query, QueryProcessor<T> queryProcessor)
             throws DaoException {
         try (Connection conn = datasource.getConnection()) {

@@ -1,16 +1,18 @@
 package ru.dmzadorin.interview.tasks.moneytransfer.model.request;
 
+import com.google.common.base.MoreObjects;
+import ru.dmzadorin.interview.tasks.moneytransfer.model.Currency;
+import ru.dmzadorin.interview.tasks.moneytransfer.model.exceptions.CurrencyNotSupportedException;
+import ru.dmzadorin.interview.tasks.moneytransfer.model.exceptions.NegativeAmountException;
+
 /**
  * Created by Dmitry Zadorin on 17.02.2018
  */
 public class MoneyTransferRequest {
     private long sourceAccount;
-    private long targetAccount;
+    private long recipientAccount;
     private double amount;
     private String currency;
-
-    public MoneyTransferRequest() {
-    }
 
     public long getSourceAccount() {
         return sourceAccount;
@@ -20,12 +22,12 @@ public class MoneyTransferRequest {
         this.sourceAccount = sourceAccount;
     }
 
-    public long getTargetAccount() {
-        return targetAccount;
+    public long getRecipientAccount() {
+        return recipientAccount;
     }
 
-    public void setTargetAccount(long targetAccount) {
-        this.targetAccount = targetAccount;
+    public void setRecipientAccount(long recipientAccount) {
+        this.recipientAccount = recipientAccount;
     }
 
     public double getAmount() {
@@ -42,5 +44,24 @@ public class MoneyTransferRequest {
 
     public void setCurrency(String currency) {
         this.currency = currency;
+    }
+
+    @Override
+    public String toString() {
+        return MoreObjects.toStringHelper(this)
+                .add("sourceAccount", sourceAccount)
+                .add("recipientAccount", recipientAccount)
+                .add("amount", amount)
+                .add("currency", currency)
+                .toString();
+    }
+
+    public void validate() {
+        if (amount < 0.0) {
+            throw new NegativeAmountException("Transfer amount cannot be less then zero, value: " + amount);
+        }
+        if (Currency.from(currency) == Currency.NOT_PRESENT) {
+            throw new CurrencyNotSupportedException(currency);
+        }
     }
 }

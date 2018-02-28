@@ -5,7 +5,6 @@ import org.apache.logging.log4j.Logger;
 import ru.dmzadorin.interview.tasks.moneytransfer.model.Account;
 import ru.dmzadorin.interview.tasks.moneytransfer.model.Currency;
 import ru.dmzadorin.interview.tasks.moneytransfer.model.Transfer;
-import ru.dmzadorin.interview.tasks.moneytransfer.model.exceptions.CurrencyNotSupportedException;
 import ru.dmzadorin.interview.tasks.moneytransfer.model.request.AccountCreateRequest;
 import ru.dmzadorin.interview.tasks.moneytransfer.model.request.MoneyTransferRequest;
 
@@ -33,31 +32,37 @@ public class MoneyTransferController {
     @POST
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
-    @Path("/transferMoney")
-    public Transfer transferMoney(MoneyTransferRequest request) {
-        BigDecimal decimalAmount = new BigDecimal(request.getAmount());
-        Currency currency = Currency.from(request.getCurrency());
-        return moneyTransferService.withdrawAmount(request.getSourceAccount(), request.getTargetAccount(), decimalAmount, currency);
+    @Path("/createAccount")
+    public Account createAccount(AccountCreateRequest accountCreateRequest) {
+        logger.info("New {}", accountCreateRequest);
+        accountCreateRequest.validate();
+
+        return moneyTransferService.createAccount(
+                accountCreateRequest.getFullName(),
+                BigDecimal.valueOf(accountCreateRequest.getInitialBalance()),
+                Currency.from(accountCreateRequest.getCurrency())
+        );
     }
 
     @POST
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
-    @Path("/createAccount")
-    public Account createAccount(AccountCreateRequest accountCreateRequest) {
-        Currency curr = Currency.from(accountCreateRequest.getCurrency());
-        if (curr == Currency.NOT_PRESENT) {
-            throw new CurrencyNotSupportedException(accountCreateRequest.getCurrency());
-        }
-        return moneyTransferService.saveAccount(
-                accountCreateRequest.getFullName(),
-                new BigDecimal(accountCreateRequest.getInitialBalance()),
-                curr);
+    @Path("/transferMoney")
+    public Transfer transferMoney(MoneyTransferRequest moneyTransferRequest) {
+        logger.info("New money transfer request, {}", moneyTransferRequest);
+        moneyTransferRequest.validate();
+
+        return moneyTransferService.transferMoney(
+                moneyTransferRequest.getSourceAccount(),
+                moneyTransferRequest.getRecipientAccount(),
+                BigDecimal.valueOf(moneyTransferRequest.getAmount()),
+                Currency.from(moneyTransferRequest.getCurrency())
+        );
     }
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    @Path("/account")
+    @Path("/getAccount")
     public Account getAccount(@QueryParam(value = "accountId") long accountId) {
         return moneyTransferService.getAccountById(accountId);
     }
@@ -69,4 +74,10 @@ public class MoneyTransferController {
         return moneyTransferService.getAllTransfers();
     }
 
+    @GET
+    @Produces(MediaType.TEXT_PLAIN)
+    @Path("/ping")
+    public String ping(){
+        return "pong";
+    }
 }

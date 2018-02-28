@@ -7,8 +7,8 @@ import org.apache.logging.log4j.Logger;
 import ru.dmzadorin.interview.tasks.moneytransfer.model.Account;
 import ru.dmzadorin.interview.tasks.moneytransfer.model.Currency;
 import ru.dmzadorin.interview.tasks.moneytransfer.model.Transfer;
-import ru.dmzadorin.interview.tasks.moneytransfer.model.exceptions.AccountNotFoundException;
 import ru.dmzadorin.interview.tasks.moneytransfer.model.exceptions.DifferentCurrenciesException;
+import ru.dmzadorin.interview.tasks.moneytransfer.model.exceptions.EntityNotFoundException;
 import ru.dmzadorin.interview.tasks.moneytransfer.model.exceptions.InsufficientFundsException;
 import ru.dmzadorin.interview.tasks.moneytransfer.persistence.AccountDao;
 import ru.dmzadorin.interview.tasks.moneytransfer.persistence.TransferDao;
@@ -19,12 +19,16 @@ import java.util.Collection;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Supplier;
 
 /**
  * Created by Dmitry Zadorin on 18.02.2018.
  */
 public class MoneyTransferServiceImpl implements MoneyTransferService {
     private static final Logger logger = LogManager.getLogger();
+    private static final String SOURCE_RECIPIENT_DIFFER = "Source currency %s does not match recipient currency %s";
+    private static final String SOURCE_TRANSFER_DIFFER = "Source currency %s does not match transfer currency %s";
+
 
     private final Cache<Long, ReadWriteLock> accountLocks;
     private final AccountDao accountDao;
@@ -38,29 +42,79 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
     }
 
     @Override
-    public Account saveAccount(String fullName, BigDecimal amount, Currency currency) {
-        Long accountId = requireNonNull(accountDao.saveAccount(fullName, amount, currency), "Account create failed");
-        return requireNonNull(getAccountById(accountId), "Account with id " + accountId + " not found");
+    public Account createAccount(String fullName, BigDecimal initialBalance, Currency currency) {
+        return accountDao.createAccount(fullName, initialBalance, currency);
     }
 
     @Override
-    public Account getAccountById(long accountId) {
+    public Account getAccountById(long accountId) throws EntityNotFoundException {
+        return doWithReadLock(accountId, () -> accountDao.getAccountById(accountId));
+    }
+
+    @Override
+    public Transfer transferMoney(long sourceId, long recipientId, BigDecimal transferAmount, Currency currency)
+            throws InsufficientFundsException, DifferentCurrenciesException, EntityNotFoundException {
+        return doWithWriteLock(sourceId, recipientId, () -> {
+            logger.info("Got new transfer request. Source account id: {}, recipient account id: {}, transfer amount: {}, transfer currency: {}",
+                    sourceId, recipientId, transferAmount, currency);
+            Account sourceAccount = accountDao.getAccountById(sourceId);
+            Account recipientAccount = accountDao.getAccountById(recipientId);
+            validate(sourceAccount, recipientAccount, transferAmount, currency);
+
+            return transferDao.transferAmount(sourceAccount.getId(), recipientAccount.getId(), transferAmount, currency);
+        });
+    }
+
+    @Override
+    public Collection<Transfer> getAllTransfers() {
+        return transferDao.getTransfers();
+    }
+
+    @Override
+    public Transfer getTransferById(long transferId) throws EntityNotFoundException {
+        return transferDao.getTransferById(transferId);
+    }
+
+    private void validate(Account source, Account recipient, BigDecimal transferAmount, Currency transferCurrency) {
+        Currency sourceCurrency = source.getCurrency();
+        Currency recipientCurrency = recipient.getCurrency();
+        compareCurrencies(sourceCurrency, recipientCurrency, SOURCE_RECIPIENT_DIFFER);
+        compareCurrencies(sourceCurrency, transferCurrency, SOURCE_TRANSFER_DIFFER);
+
+        BigDecimal sourceAmount = source.getAmount();
+        BigDecimal subtract = sourceAmount.subtract(transferAmount);
+        if (subtract.signum() == -1) {
+            logger.warn("Not enough funds on account: {}, current amount: {}, transfer amount: {}", source.getId(),
+                    sourceAmount, transferAmount);
+            throw new InsufficientFundsException(source.getId(), sourceAmount, transferAmount);
+        }
+    }
+
+    private void compareCurrencies(Currency first, Currency second, String messageFormat) {
+        if (first != second) {
+            String message = String.format(messageFormat, first, second);
+            logger.warn(message);
+            throw new DifferentCurrenciesException(message);
+        }
+    }
+
+    private <T> T doWithReadLock(long accountId, Supplier<T> supplier) {
         ReadWriteLock lock = getLockForAccount(accountId);
         try {
             lock.readLock().lock();
-            return accountDao.getAccountById(accountId);
+            return supplier.get();
         } finally {
             lock.readLock().unlock();
         }
     }
 
-    @Override
-    public Transfer withdrawAmount(long sourceId, long recipientId, BigDecimal amount, Currency currency) {
+    private <T> T doWithWriteLock(long sourceId, long recipientId, Supplier<T> supplier) {
         ReadWriteLock sourceLock = getLockForAccount(sourceId);
         ReadWriteLock recipientLock = getLockForAccount(recipientId);
 
         ReadWriteLock first;
         ReadWriteLock second;
+        //Determine lock order based on ids
         if (sourceId > recipientId) {
             first = sourceLock;
             second = recipientLock;
@@ -72,50 +126,11 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
         try {
             first.writeLock().lock();
             second.writeLock().lock();
-            return doCreateTransfer(sourceId, recipientId, amount, currency);
+            return supplier.get();
         } finally {
             second.writeLock().unlock();
             first.writeLock().unlock();
         }
-    }
-
-    @Override
-    public Collection<Transfer> getAllTransfers() {
-        return transferDao.getTransfers();
-    }
-
-    private Transfer doCreateTransfer(long sourceId, long recipientId, BigDecimal amount, Currency currency) {
-        Account sourceAccount = requireNonNull(accountDao.getAccountById(sourceId),
-                "Source account " + sourceId + " not found");
-        Account recipientAccount = requireNonNull(accountDao.getAccountById(recipientId),
-                "Recipient account " + recipientId + " not found");
-        validate(sourceAccount, recipientAccount, currency);
-        Transfer transfer = transferDao.transferAmount(sourceAccount.getId(), recipientAccount.getId(), amount, currency);
-        if (transfer == null) {
-            //TODO
-        }
-        return transfer;
-    }
-
-    private void validate(Account source, Account recipient, Currency transferCurrency) {
-        Currency sourceCurrency = source.getCurrency();
-        Currency recipientCurrency = recipient.getCurrency();
-        if (sourceCurrency != recipientCurrency || sourceCurrency != transferCurrency) {
-            logger.warn("Currencies differ: {}, {}", sourceCurrency, recipientCurrency);
-            throw new DifferentCurrenciesException(sourceCurrency, recipientCurrency);
-        }
-        BigDecimal sourceAmount = source.getAmount();
-        BigDecimal subtract = sourceAmount.subtract(recipient.getAmount());
-        if (subtract.doubleValue() < 0.0) {
-            throw new InsufficientFundsException("Not enough funds on account id: " + source.getId());
-        }
-    }
-
-    private <T> T requireNonNull(T valueToValidate, String message) {
-        if (valueToValidate == null) {
-            throw AccountNotFoundException.accountNotFound(message);
-        }
-        return valueToValidate;
     }
 
     private ReadWriteLock getLockForAccount(long accountId) {

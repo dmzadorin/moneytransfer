@@ -1,7 +1,9 @@
 package ru.dmzadorin.interview.tasks.moneytransfer.persistence
 
+import org.junit.Assert
 import ru.dmzadorin.interview.tasks.moneytransfer.config.DataSourceConfigurer
 import ru.dmzadorin.interview.tasks.moneytransfer.model.Currency
+import ru.dmzadorin.interview.tasks.moneytransfer.model.exceptions.EntityNotFoundException
 import spock.lang.Shared
 import spock.lang.Specification
 import spock.lang.Unroll
@@ -19,19 +21,31 @@ class H2AccountDaoTest extends Specification {
     @Unroll
     def "verify that account '#fullName' is saved properly and get by id"() {
         when:
-        def id = accountDao.saveAccount(fullName, amount, currency)
+        def account = accountDao.createAccount(fullName, amount, currency)
         then:
         noExceptionThrown()
-        id != null
-        def account = accountDao.getAccountById(id)
-        account != null
         account.fullName == fullName
         account.currency == currency
         account.amount == amount
         where:
-        fullName | amount                    | currency
-        'test'   | BigDecimal.valueOf(100.0) | Currency.EUR
-        'test2'  | BigDecimal.valueOf(10.0)  | Currency.USD
-        'test3'  | BigDecimal.valueOf(20.0)  | Currency.GBP
+        fullName | amount           | currency
+        'test'   | getDecimal(100)  | Currency.EUR
+        'test2'  | getDecimal(10.0) | Currency.USD
+        'test3'  | getDecimal(20.0) | Currency.GBP
     }
+
+    @Unroll
+    def "verify that there is no account with id '#id'"() {
+        when:
+        accountDao.getAccountById(id)
+        then:
+        thrown(EntityNotFoundException)
+        where:
+        id = 0
+    }
+
+    static BigDecimal getDecimal(double v) {
+        BigDecimal.valueOf(v).setScale(2)
+    }
+
 }

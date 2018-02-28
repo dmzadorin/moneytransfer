@@ -2,9 +2,6 @@ package ru.dmzadorin.interview.tasks.moneytransfer.config;
 
 import org.glassfish.jersey.internal.inject.AbstractBinder;
 import org.glassfish.jersey.server.ResourceConfig;
-import org.h2.jdbcx.JdbcDataSource;
-import org.h2.tools.RunScript;
-import ru.dmzadorin.interview.tasks.moneytransfer.model.exceptions.ApplicationExceptionMapper;
 import ru.dmzadorin.interview.tasks.moneytransfer.persistence.AccountDao;
 import ru.dmzadorin.interview.tasks.moneytransfer.persistence.H2AccountDao;
 import ru.dmzadorin.interview.tasks.moneytransfer.persistence.H2TransferDao;
@@ -15,8 +12,6 @@ import ru.dmzadorin.interview.tasks.moneytransfer.service.MoneyTransferServiceIm
 
 import javax.inject.Singleton;
 import javax.sql.DataSource;
-import java.nio.charset.StandardCharsets;
-import java.sql.SQLException;
 
 /**
  * Created by Dmitry Zadorin on 18.02.2018.

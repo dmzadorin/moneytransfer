@@ -1,13 +1,13 @@
-create table ACCOUNT
+create table if not exists ACCOUNT
 (
   ID          bigint auto_increment,
   FULLNAME    varchar(255)   not null,
   AMOUNT      DECIMAL(20, 2) not null,
   CURRENCY    varchar(3)     not null,
-  CREATE_TIME TIMESTAMP         not null
+  CREATE_TIME TIMESTAMP      not null
 );
 
-create table TRANSFER
+create table if not exists TRANSFER
 (
   ID           bigint auto_increment,
   SOURCE_ID    bigint         not null,

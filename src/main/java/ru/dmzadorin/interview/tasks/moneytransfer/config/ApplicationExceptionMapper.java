@@ -1,6 +1,7 @@
-package ru.dmzadorin.interview.tasks.moneytransfer.model.exceptions;
+package ru.dmzadorin.interview.tasks.moneytransfer.config;
 
-import ru.dmzadorin.interview.tasks.moneytransfer.model.ErrorMessage;
+import ru.dmzadorin.interview.tasks.moneytransfer.model.json.ErrorMessage;
+import ru.dmzadorin.interview.tasks.moneytransfer.model.exceptions.ApplicationException;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;

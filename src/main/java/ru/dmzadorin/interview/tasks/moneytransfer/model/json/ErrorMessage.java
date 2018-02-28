@@ -1,10 +1,13 @@
-package ru.dmzadorin.interview.tasks.moneytransfer.model;
+package ru.dmzadorin.interview.tasks.moneytransfer.model.json;
 
 /**
  * Created by Dmitry Zadorin on 17.02.2018
  */
 public class ErrorMessage {
-    private final String message;
+    private String message;
+
+    public ErrorMessage() {
+    }
 
     public ErrorMessage(String message) {
         this.message = message;
@@ -12,5 +15,9 @@ public class ErrorMessage {
 
     public String getMessage() {
         return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
     }
 }

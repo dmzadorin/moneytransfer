@@ -11,6 +11,7 @@ import java.net.URI;
 
 /**
  * Created by Dmitry Zadorin on 18.02.2018.
+ * In order to run either pass port as input argument or use default value
  */
 public class App {
     private static final Logger logger = LogManager.getLogger();

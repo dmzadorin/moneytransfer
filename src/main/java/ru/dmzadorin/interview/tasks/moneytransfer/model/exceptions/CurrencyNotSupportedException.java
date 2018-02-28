@@ -6,6 +6,6 @@ package ru.dmzadorin.interview.tasks.moneytransfer.model.exceptions;
 public class CurrencyNotSupportedException extends ApplicationException {
 
     public CurrencyNotSupportedException(String currency) {
-        super("Currency " + currency + " is not supported");
+        super("Currency " + currency + " is not supported!");
     }
 }
