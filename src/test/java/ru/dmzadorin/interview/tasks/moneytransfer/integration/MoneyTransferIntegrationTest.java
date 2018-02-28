@@ -12,10 +12,12 @@ import ru.dmzadorin.interview.tasks.moneytransfer.model.request.MoneyTransferReq
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.Application;
+import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.function.Consumer;
 
 import static org.junit.Assert.assertEquals;
@@ -25,6 +27,7 @@ public class MoneyTransferIntegrationTest extends JerseyTest {
     private static final String CREATE_ACCOUNT_PATH = "moneyTransfer/createAccount";
     private static final String GET_ACCOUNT_PATH = "moneyTransfer/getAccount";
     private static final String TRANSFER_MONEY_PATH = "moneyTransfer/transferMoney";
+    private static final String GET_TRANSFERS_PATH = "moneyTransfer/getTransfers";
 
     @Override
     protected Application configure() {
@@ -48,7 +51,7 @@ public class MoneyTransferIntegrationTest extends JerseyTest {
         sendRequest(entity, CREATE_ACCOUNT_PATH, Account.class, account -> {
             assertEquals(entity.getFullName(), account.getFullName());
             assertEquals(Currency.EUR, account.getCurrency());
-            BigDecimal expectedAmount = BigDecimal.valueOf(entity.getInitialBalance()).setScale(2, BigDecimal.ROUND_UP);
+            BigDecimal expectedAmount = getDecimal(entity.getInitialBalance());
             assertEquals(expectedAmount, account.getAmount());
         });
         entity.setInitialBalance(-1.0);
@@ -79,7 +82,7 @@ public class MoneyTransferIntegrationTest extends JerseyTest {
         long secondAccountId = secondAccount.getId();
 
         MoneyTransferRequest entity = new MoneyTransferRequest();
-        entity.setSourceAccount(firstAccount.getId());
+        entity.setSourceAccount(firstAccountId);
         entity.setRecipientAccount(secondAccountId);
         entity.setCurrency("EUR");
         entity.setAmount(100.0);
@@ -88,11 +91,52 @@ public class MoneyTransferIntegrationTest extends JerseyTest {
             assertEquals(entity.getSourceAccount(), transfer.getSourceAccountId());
             assertEquals(entity.getRecipientAccount(), transfer.getRecipientAccountId());
             assertEquals(Currency.EUR, transfer.getCurrency());
-            BigDecimal expectedAmount = BigDecimal.valueOf(entity.getAmount()).setScale(2, BigDecimal.ROUND_UP);
+            BigDecimal expectedAmount = getDecimal(entity.getAmount());
             assertEquals(expectedAmount, transfer.getAmount());
         });
 
+        firstAccount = getAccount(firstAccount.getId());
+        secondAccount = getAccount(secondAccount.getId());
+
+        assertEquals(firstAccount.getAmount(), getDecimal(900.0));
+        assertEquals(secondAccount.getAmount(), getDecimal(600.0));
+
+        entity.setRecipientAccount(firstAccount.getId());
+        entity.setSourceAccount(secondAccountId);
+        entity.setAmount(50.0);
+
+        sendRequest(entity, TRANSFER_MONEY_PATH, Transfer.class, transfer -> {
+            assertEquals(entity.getSourceAccount(), transfer.getSourceAccountId());
+            assertEquals(entity.getRecipientAccount(), transfer.getRecipientAccountId());
+            assertEquals(Currency.EUR, transfer.getCurrency());
+            BigDecimal expectedAmount = getDecimal(entity.getAmount());
+            assertEquals(expectedAmount, transfer.getAmount());
+        });
+
+        firstAccount = getAccount(firstAccount.getId());
+        secondAccount = getAccount(secondAccount.getId());
+
+        assertEquals(firstAccount.getAmount(), getDecimal(950.0));
+        assertEquals(secondAccount.getAmount(), getDecimal(550.0));
+
+        Response response = target(GET_TRANSFERS_PATH).request().get();
+        Collection<Transfer> transfers = response.readEntity(new GenericType<Collection<Transfer>>() {
+        });
+        assertEquals(2, transfers.size());
+    }
+
+    @Test
+    public void testTransferValidation() {
+        Account firstAccount = createAccount("test", "EUR", 100);
+        Account secondAccount = createAccount("test2", "EUR", 100);
+        long firstAccountId = firstAccount.getId();
+        long secondAccountId = secondAccount.getId();
+
+        MoneyTransferRequest entity = new MoneyTransferRequest();
+        entity.setSourceAccount(firstAccountId);
+        entity.setRecipientAccount(secondAccountId);
         entity.setCurrency("USD");
+        entity.setAmount(50.0);
         sendRequest(entity, TRANSFER_MONEY_PATH, ErrorMessage.class, errorMessage -> {
             assertEquals("Source currency EUR does not match transfer currency USD", errorMessage.getMessage());
         });
@@ -104,10 +148,11 @@ public class MoneyTransferIntegrationTest extends JerseyTest {
             assertEquals("Source currency EUR does not match recipient currency USD", errorMessage.getMessage());
         });
 
-        entity.setAmount(1000.0);
+        entity.setAmount(200.0);
+        entity.setSourceAccount(firstAccountId);
         entity.setRecipientAccount(secondAccountId);
         sendRequest(entity, TRANSFER_MONEY_PATH, ErrorMessage.class, errorMessage -> {
-            assertEquals("Not enough funds on account id " + firstAccountId + ", current amount = 900.00, transfer amount = 1000.0", errorMessage.getMessage());
+            assertEquals("Not enough funds on account id " + firstAccountId + ", current amount = 100.00, transfer amount = 200.0", errorMessage.getMessage());
         });
 
 
@@ -122,6 +167,10 @@ public class MoneyTransferIntegrationTest extends JerseyTest {
         sendRequest(entity, TRANSFER_MONEY_PATH, ErrorMessage.class, errorMessage -> {
             assertEquals("Account with id -1 not found in storage", errorMessage.getMessage());
         });
+    }
+
+    private BigDecimal getDecimal(double value) {
+        return BigDecimal.valueOf(value).setScale(2, BigDecimal.ROUND_UP);
     }
 
     private Account createAccount(String fullName, String currency, double initialBalance) {
